@@ -2,7 +2,6 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Ellipse
 import numpy as np
 from matplotlib import animation
-import pprint as pprint
 import random
 
 fig = plt.figure()
@@ -89,6 +88,9 @@ class radar:
     def show_ellipse(self, t):
         data = self.get_polar_data(t)
         ax.add_patch(Ellipse((self.last_positions[-1][0], self.last_positions[-1][1]), 300, 6*data[0] * self.arc_error, data[1]*180/np.pi))
+
+    def show_sensor(self):
+        ax.plot([self.x_position] , [self.y_position], 'x' , color='red')
      
 class kalman_filter:
     def __init__(self, object_data, t):
@@ -144,6 +146,7 @@ def animate(i):
         kal.filtering(zk, i, Hk, Rk, 10, i)
         kal.render(i)
     show_flugbahn(i)
+    radar1.show_sensor()
     # radar1.show_point(i)
     # show_velocity(i, True)
     # show_accel(i, True)
