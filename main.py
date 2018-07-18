@@ -78,7 +78,6 @@ class radar:
         return cartesian_to_polar(data[0]-self.x_position, data[1]-self.y_position)
 
     def show_point(self, t):
-        data = self.get_polar_data(t)
         ax.plot([self.last_positions[-1][0]],
                 [self.last_positions[-1][1]] , '.', color='yellow')
 

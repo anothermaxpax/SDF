@@ -23,13 +23,14 @@ velocity_y = v * np.cos(2 * omega * t)
 accel_x = -q * np.sin(omega * t)/4
 accel_y = -q * np.sin(2 * omega * t)
 
-def f_k_k_1(od, t):
+def f_k_k_1(t):
     return np.array([ [1, 0, t       , 0        , 0.5*t*t      , 0            ],
                       [0, 1, 0       , t        , 0            , 0.5*t*t      ],
                       [0, 0, 1       , 0        , t            , 0            ],
                       [0, 0, 0       , 1        , 0            , t            ],
                       [0, 0, 0       , 0        , 1            , 0            ],
                       [0, 0, 0       , 0        , 0            , 1            ]])
+
 class kalman_data:
     def __init__(self, mu, covMat):
         self.mu = mu
@@ -79,7 +80,6 @@ class radar:
         return cartesian_to_polar(data[0]-self.x_position, data[1]-self.y_position)
 
     def show_point(self, t):
-        data = self.get_polar_data(t)
         ax.plot([self.last_positions[-1][0]],
                 [self.last_positions[-1][1]] , '.', color='yellow')
 
@@ -99,7 +99,7 @@ class kalman_filter:
 
     def prediction(self, xk_1k_1, pk_1k_1, sigma ,dt):
         dkk_1 = d_k_k_1(sigma, dt)
-        fkk_1 = f_k_k_1(xk_1k_1, dt)
+        fkk_1 = f_k_k_1(dt)
         xkk_1 = fkk_1.dot(xk_1k_1)
         pkk_1 = fkk_1.dot(pk_1k_1).dot(np.transpose(fkk_1)) + dkk_1
         return [xkk_1, pkk_1]
@@ -110,7 +110,6 @@ class kalman_filter:
         covMatk_1 = self.object_data[k-1][1]
         tk_1 = self.object_data[k-1][2]
         [mukk_1, covMatkk_1] = self.prediction(muk_1, covMatk_1 ,sigma ,t - tk_1)
-
         zkk = np.array([sensorData[0],sensorData[1]])
         vkk_1 = zkk - Hk.dot(muk_1)
         skk_1 = Hk.dot(covMatkk_1).dot(np.transpose(Hk)) + Rk
@@ -118,7 +117,24 @@ class kalman_filter:
         xkk = mukk_1 + wkk_1.dot(vkk_1)
         covMatkk = covMatkk_1 - wkk_1.dot(skk_1).dot(np.transpose(wkk_1))
         self.object_data.append([xkk , covMatkk ,  t])
-    
+        [xk_1k, pk_1k] = self.retrodiction(xkk, mukk_1, covMatkk_1, covMatkk, k-1, sigma )
+        print("k = ", k)
+        print("xk-1|k" , xk_1k)
+        print("xk-1|k-1" , self.object_data[k-1][0])
+        print("xk-1", np.array([x[k-1],y[k-1],velocity_x[k-1], velocity_y[k-1],accel_x[k-1],accel_y[k-1]]))
+        print("")
+        print("")
+
+    def retrodiction(self, xlk, xll_1 , pll_1 , plk, l_1 , sigma):
+        dt = self.object_data[l_1+1][2] - self.object_data[l_1][2]
+        pl_1l_1 = self.object_data[l_1][1]
+        fll_1 = f_k_k_1(dt)
+        xl_1l_1 = self.object_data[l_1][0]
+        wl_1l = pl_1l_1.dot(np.transpose(fll_1)).dot(np.linalg.inv(pll_1))
+        xl_1k = xl_1l_1 + wl_1l.dot((xlk - xll_1))
+        pl_1k = pl_1l_1 + wl_1l.dot((plk + pll_1)).dot(wl_1l)
+        return [xl_1k , pl_1k ]
+
     def render(self, t):
         mu = self.object_data[t][0]
         ax.plot([mu[0]], [mu[1]], '.', color="orange")
@@ -143,7 +159,6 @@ def animate(t):
     for radar in radars:
         radar.next_data(x[i], y[i] )
     [Rk , zk]= multiSensor_rechner( radars, t)
-    print(zk - np.array(radars[0].get_data(t)))
     # zk = np.array([x[i],y[i]]) 
     if t > 0:
         kal.filtering(zk, t, Hk, Rk, 10, t)
